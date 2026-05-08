@@ -1,0 +1,14 @@
+# Logs locaux (non synchronisés)
+logs/
+
+# Config locale (chemin réseau dev vs prod)
+config.local.*
+
+# Fichiers système Windows
+Thumbs.db
+desktop.ini
+
+# Éditeurs
+.vscode/
+.cursor/
+*.suo
