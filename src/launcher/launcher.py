@@ -2,8 +2,6 @@
 Launcher — vérifie la version sur le réseau, met à jour si nécessaire, lance l'app.
 """
 import json
-import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path

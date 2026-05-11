@@ -73,4 +73,5 @@ class MouseView(ctk.CTkFrame):
 
     def load_assignments(self, assignments: dict[str, str]) -> None:
         for button, code in assignments.items():
-            self.assign(button, code)
+            if button in self._buttons:
+                self.assign(button, code)

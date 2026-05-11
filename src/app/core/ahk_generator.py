@@ -15,12 +15,33 @@ SetWorkingDir %A_ScriptDir%
 
 """
 
+# Correspondance touches UI → noms AHK
+AHK_KEY_MAP = {
+    # Souris
+    "Clic gauche":  "LButton",
+    "Clic milieu":  "MButton",
+    "Clic droit":   "RButton",
+    "XButton1":     "XButton1",
+    "XButton2":     "XButton2",
+    # Touches spéciales clavier
+    "Esc":          "Escape",
+    "Backspace":    "Backspace",
+    "Tab":          "Tab",
+    "Caps":         "CapsLock",
+    "Enter":        "Enter",
+    "Shift":        "Shift",
+    "Ctrl":         "Ctrl",
+    "Alt":          "Alt",
+    "AltGr":        "AltGr",
+    "Win":          "LWin",
+    "Menu":         "AppsKey",
+    "Space":        "Space",
+    # Touches dont le caractère AHK doit être échappé
+    "`":            "``",
+}
+
 
 def generate(assignments: dict[str, str], output_path: Path) -> None:
-    """
-    assignments : {"XButton1": "VV", "XButton2": "CP", "F1": "DI", ...}
-    output_path : chemin du fichier .ahk à écrire
-    """
     lines = [AHK_HEADER]
     for key, command in assignments.items():
         ahk_key = _to_ahk_key(key)
@@ -29,11 +50,4 @@ def generate(assignments: dict[str, str], output_path: Path) -> None:
 
 
 def _to_ahk_key(key: str) -> str:
-    mapping = {
-        "XButton1": "XButton1",
-        "XButton2": "XButton2",
-        "Clic milieu": "MButton",
-        "Clic gauche": "LButton",
-        "Clic droit": "RButton",
-    }
-    return mapping.get(key, key)
+    return AHK_KEY_MAP.get(key, key)

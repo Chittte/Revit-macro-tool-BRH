@@ -71,7 +71,7 @@ class KeyboardView(ctk.CTkFrame):
     def assign(self, key: str, command_code: str) -> None:
         self._assignments[key] = command_code
         if key in self._buttons:
-            label = key if len(key) > 2 else f"{key}\n{command_code}"
+            label = key if len(key) > 4 else f"{key}\n{command_code}"
             self._buttons[key].configure(
                 text=label,
                 fg_color=COLOR_SELECTED if key == self._selected else COLOR_ASSIGNED,
@@ -90,4 +90,5 @@ class KeyboardView(ctk.CTkFrame):
 
     def load_assignments(self, assignments: dict[str, str]) -> None:
         for key, code in assignments.items():
-            self.assign(key, code)
+            if key in self._buttons:
+                self.assign(key, code)
