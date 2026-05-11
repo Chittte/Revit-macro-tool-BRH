@@ -129,17 +129,14 @@ def _build_zone(profiles: list[dict], script_path: Path) -> str:
                 lines.append("    {")
                 for item in seq:
                     if item["type"] == "key":
-                        lines.append(f"        Send, {item['value']}")
-                        lines.append(f"        Sleep, 100")
+                        lines.append(f"        SendInput, {item['value'].lower()}")
                     elif item["type"] == "text":
                         escaped = item["value"].replace('"', '""')
                         lines.append(f'        oldClip := ClipboardAll')
                         lines.append(f'        Clipboard := "{escaped}"')
                         lines.append(f'        ClipWait, 1')
-                        lines.append(f'        Send, ^v')
-                        lines.append(f'        Sleep, 50')
+                        lines.append(f'        SendInput, ^v')
                         lines.append(f'        Clipboard := oldClip')
-                        lines.append(f'        Sleep, 100')
                 lines.append("    }")
             lines.append("    return")
             lines.append("")

@@ -24,41 +24,34 @@ PgDn::
 XButton1::
     if (_rmt_idx == 1)  ; Create Similar
     {
-        Send, CS
-        Sleep, 100
+        SendInput, cs
     }
     else if (_rmt_idx == 2)  ; armature et dalle
     {
         oldClip := ClipboardAll
         Clipboard := "__M@__'' c/c"
         ClipWait, 1
-        Send, ^v
-        Sleep, 50
+        SendInput, ^v
         Clipboard := oldClip
-        Sleep, 100
     }
     return
 
 XButton2::
     if (_rmt_idx == 1)  ; Create Similar
     {
-        Send, CS
-        Sleep, 100
+        SendInput, cs
     }
     else if (_rmt_idx == 2)  ; armature et dalle
     {
         oldClip := ClipboardAll
         Clipboard := "DALLE SUR SOL"
         ClipWait, 1
-        Send, ^v
-        Sleep, 50
+        SendInput, ^v
         Clipboard := oldClip
-        Sleep, 100
     }
     else if (_rmt_idx == 3)  ; Copie et TR
     {
-        Send, ()
-        Sleep, 100
+        SendInput, ()
     }
     return
 

@@ -99,7 +99,7 @@ class CompactWindow(ctk.CTkToplevel):
                 self._refresh()
         except Exception:
             pass
-        self._poll_id = self.after(500, self._poll)
+        self._poll_id = self.after(100, self._poll)
 
     # ── Affichage ─────────────────────────────────────────────────────────────
 
