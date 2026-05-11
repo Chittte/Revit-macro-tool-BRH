@@ -1,7 +1,6 @@
 """
 Fenêtre principale de l'application.
 """
-import json
 from pathlib import Path
 import customtkinter as ctk
 
@@ -12,9 +11,6 @@ from app.ui.log_window import LogWindow
 from app.core import ahk_manager
 from app.core import logger
 from app.config import get_ahk_script_path, set_ahk_script_path
-
-
-ASSIGNMENTS_PATH = Path(__file__).parent.parent.parent.parent / "data_local" / "assignments.json"
 
 
 class MainWindow(ctk.CTk):
@@ -58,32 +54,32 @@ class MainWindow(ctk.CTk):
         self._mouse = MouseView(left, on_select=self._on_key_selected)
         self._mouse.pack(fill="x", pady=(8, 0))
 
-        # Panneau droit — commandes
-        right = ctk.CTkFrame(self, width=320)
+        # Panneau droit — gestion des séquences
+        right = ctk.CTkFrame(self, width=340)
         right.pack(side="right", fill="y", padx=(0, 10), pady=10)
         right.pack_propagate(False)
 
-        self._panel = CommandPanel(right, on_assign=self._on_assign)
+        self._panel = CommandPanel(right, on_change=self._on_sequence_change)
         self._panel.pack(fill="both", expand=True)
 
     def _on_key_selected(self, key: str) -> None:
         self._active_key = key
         self._active_view = self._keyboard if key in self._keyboard._buttons else self._mouse
-        self._panel.set_active_key(key)
-        logger.info(f"Touche sélectionnée : {key}")
+        current_commands = self._active_view.get_commands(key)
+        self._panel.set_active_key(key, current_commands)
+        logger.info(f"Touche sélectionnée : {key} ({len(current_commands)} commande(s))")
 
-    def _on_assign(self, command_code: str) -> None:
+    def _on_sequence_change(self, commands: list[str]) -> None:
         if not self._active_key or not self._active_view:
             return
-        if command_code:
-            self._active_view.assign(self._active_key, command_code)
-            logger.success(f"Assigné : {self._active_key} → {command_code}")
+        self._active_view.set_commands(self._active_key, commands)
+        if commands:
+            logger.success(f"{self._active_key} → {' + '.join(commands)}")
         else:
-            self._active_view.unassign(self._active_key)
-            logger.info(f"Assignation retirée : {self._active_key}")
+            logger.info(f"Séquence effacée : {self._active_key}")
         self._save_to_script()
 
-    def _get_all_assignments(self) -> dict[str, str]:
+    def _get_all_assignments(self) -> dict[str, list[str]]:
         return {**self._keyboard.get_assignments(), **self._mouse.get_assignments()}
 
     def _save_to_script(self) -> None:

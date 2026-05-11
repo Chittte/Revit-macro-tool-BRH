@@ -1,6 +1,6 @@
 """
 Affichage visuel du clavier — QWERTY.
-Chaque touche est cliquable pour assigner une commande Revit.
+Chaque touche peut avoir une séquence de commandes Revit.
 """
 from __future__ import annotations
 from typing import Callable
@@ -28,7 +28,7 @@ class KeyboardView(ctk.CTkFrame):
         super().__init__(parent, **kwargs)
         self._on_select = on_select
         self._selected: str | None = None
-        self._assignments: dict[str, str] = {}
+        self._assignments: dict[str, list[str]] = {}
         self._buttons: dict[str, ctk.CTkButton] = {}
         self._build()
 
@@ -50,7 +50,6 @@ class KeyboardView(ctk.CTkFrame):
                     command=lambda k=key: self._on_click(k),
                 )
                 btn.pack(side="left", padx=1)
-                # Pour les touches dupliquées (ex: 2x Shift), on garde la première occurrence
                 if key not in self._buttons:
                     self._buttons[key] = btn
 
@@ -60,7 +59,6 @@ class KeyboardView(ctk.CTkFrame):
             self._on_select(key)
 
     def _set_selected(self, key: str) -> None:
-        # Désélectionner l'ancienne
         if self._selected and self._selected in self._buttons:
             color = COLOR_ASSIGNED if self._selected in self._assignments else COLOR_DEFAULT
             self._buttons[self._selected].configure(fg_color=color)
@@ -68,27 +66,33 @@ class KeyboardView(ctk.CTkFrame):
         if key in self._buttons:
             self._buttons[key].configure(fg_color=COLOR_SELECTED)
 
-    def assign(self, key: str, command_code: str) -> None:
-        self._assignments[key] = command_code
-        if key in self._buttons:
-            label = key if len(key) > 4 else f"{key}\n{command_code}"
-            self._buttons[key].configure(
-                text=label,
-                fg_color=COLOR_SELECTED if key == self._selected else COLOR_ASSIGNED,
-            )
-
-    def unassign(self, key: str) -> None:
-        self._assignments.pop(key, None)
+    def set_commands(self, key: str, commands: list[str]) -> None:
+        if commands:
+            self._assignments[key] = commands
+        else:
+            self._assignments.pop(key, None)
         if key in self._buttons:
             self._buttons[key].configure(
-                text=key,
-                fg_color=COLOR_SELECTED if key == self._selected else COLOR_DEFAULT,
+                text=_key_label(key, commands),
+                fg_color=COLOR_SELECTED if key == self._selected else (COLOR_ASSIGNED if commands else COLOR_DEFAULT),
             )
 
-    def get_assignments(self) -> dict[str, str]:
-        return dict(self._assignments)
+    def get_commands(self, key: str) -> list[str]:
+        return list(self._assignments.get(key, []))
 
-    def load_assignments(self, assignments: dict[str, str]) -> None:
-        for key, code in assignments.items():
+    def get_assignments(self) -> dict[str, list[str]]:
+        return {k: list(v) for k, v in self._assignments.items()}
+
+    def load_assignments(self, assignments: dict[str, list[str]]) -> None:
+        for key, commands in assignments.items():
             if key in self._buttons:
-                self.assign(key, code)
+                self.set_commands(key, commands)
+
+
+def _key_label(key: str, commands: list[str]) -> str:
+    if not commands:
+        return key
+    first = commands[0]
+    if len(commands) == 1:
+        return f"{key}\n{first}" if len(key) <= 4 else key
+    return f"{key}\n{first}+{len(commands)-1}"

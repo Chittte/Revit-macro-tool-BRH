@@ -1,6 +1,6 @@
 """
 Gestion du script AHK existant — lecture, modification en place, rechargement.
-Le script n'est jamais recréé, seulement mis à jour.
+Chaque touche peut déclencher une séquence de commandes Revit.
 """
 from __future__ import annotations
 import re
@@ -10,7 +10,6 @@ from pathlib import Path
 from app.core import logger
 
 
-# Délimiteurs de la zone gérée par l'app dans le script AHK
 ZONE_START = "; === REVIT MACRO TOOL - DEBUT ==="
 ZONE_END   = "; === REVIT MACRO TOOL - FIN ==="
 
@@ -35,12 +34,11 @@ AHK_KEY_MAP = {
     "`":            "``",
 }
 
-# Inverse du mapping — pour lire le script existant
 AHK_KEY_MAP_INV = {v: k for k, v in AHK_KEY_MAP.items()}
 
 
-def read_assignments(script_path: Path) -> dict[str, str]:
-    """Lit les assignations depuis la zone gérée du script AHK."""
+def read_assignments(script_path: Path) -> dict[str, list[str]]:
+    """Lit les séquences de commandes depuis la zone gérée du script AHK."""
     if not script_path.exists():
         logger.warning(f"Script AHK introuvable : {script_path}")
         return {}
@@ -51,19 +49,23 @@ def read_assignments(script_path: Path) -> dict[str, str]:
         logger.warning("Zone gérée introuvable dans le script — aucune assignation lue")
         return {}
     zone = content[start:end]
-    assignments = {}
-    # Cherche les patterns : KeyName::\n    Send, CMD\n    Return
-    pattern = re.compile(r"^(\S+)::\s*\n\s+Send,\s+(\S+)", re.MULTILINE)
-    for match in pattern.finditer(zone):
-        ahk_key, command = match.group(1), match.group(2)
-        ui_key = AHK_KEY_MAP_INV.get(ahk_key, ahk_key)
-        assignments[ui_key] = command
-    logger.success(f"Assignations lues depuis le script : {len(assignments)} entrées")
+    assignments: dict[str, list[str]] = {}
+    # Pattern : KeyName::\n    Send, CMD1\n    Send, CMD2\n    Return
+    block_pattern = re.compile(r"^(\S+)::\n(.*?)Return", re.MULTILINE | re.DOTALL)
+    send_pattern  = re.compile(r"Send,\s+(\S+)")
+    for block in block_pattern.finditer(zone):
+        ahk_key  = block.group(1)
+        body     = block.group(2)
+        commands = send_pattern.findall(body)
+        if commands:
+            ui_key = AHK_KEY_MAP_INV.get(ahk_key, ahk_key)
+            assignments[ui_key] = commands
+    logger.success(f"Assignations lues depuis le script : {len(assignments)} touches")
     return assignments
 
 
-def write_assignments(script_path: Path, assignments: dict[str, str]) -> None:
-    """Met à jour la zone gérée dans le script existant. Le reste du script est préservé."""
+def write_assignments(script_path: Path, assignments: dict[str, list[str]]) -> None:
+    """Met à jour la zone gérée dans le script existant. Le reste est préservé."""
     if not script_path.exists():
         _create_base_script(script_path)
 
@@ -71,21 +73,19 @@ def write_assignments(script_path: Path, assignments: dict[str, str]) -> None:
     zone_block = _build_zone(assignments)
 
     start = content.find(ZONE_START)
-    end = content.find(ZONE_END)
+    end   = content.find(ZONE_END)
 
     if start != -1 and end != -1:
-        # Remplace la zone existante
         new_content = content[:start] + zone_block + content[end + len(ZONE_END):]
     else:
-        # Ajoute la zone à la fin du script
         new_content = content.rstrip() + "\n\n" + zone_block
 
     script_path.write_text(new_content, encoding="utf-8")
-    logger.success(f"Script mis à jour : {script_path} ({len(assignments)} règles)")
+    total_cmds = sum(len(v) for v in assignments.values())
+    logger.success(f"Script mis à jour : {len(assignments)} touches, {total_cmds} commandes au total")
 
 
 def reload_script(script_path: Path) -> None:
-    """Recharge le script AHK en cours d'exécution."""
     ahk_exe = _find_ahk()
     if not ahk_exe:
         logger.warning("AutoHotkey introuvable — rechargement ignoré")
@@ -99,7 +99,6 @@ def reload_script(script_path: Path) -> None:
 
 
 def launch_script(script_path: Path) -> None:
-    """Lance le script AHK s'il n'est pas déjà actif."""
     ahk_exe = _find_ahk()
     if not ahk_exe:
         logger.warning("AutoHotkey introuvable — installez AHK v1.1")
@@ -112,13 +111,20 @@ def launch_script(script_path: Path) -> None:
         logger.error("Échec lancement AHK", e)
 
 
-def _build_zone(assignments: dict[str, str]) -> str:
+def _build_zone(assignments: dict[str, list[str]]) -> str:
     lines = [ZONE_START + "\n"]
-    for ui_key, command in assignments.items():
+    for ui_key, commands in assignments.items():
+        if not commands:
+            continue
         ahk_key = AHK_KEY_MAP.get(ui_key, ui_key)
-        lines.append(f"{ahk_key}::\n    Send, {command}\n    Return\n")
+        block = [f"{ahk_key}::"]
+        for cmd in commands:
+            block.append(f"    Send, {cmd}")
+            block.append(f"    Sleep, 100")
+        block.append(f"    Return")
+        lines.append("\n".join(block))
     lines.append(ZONE_END)
-    return "\n".join(lines)
+    return "\n\n".join(lines) + "\n"
 
 
 def _create_base_script(script_path: Path) -> None:

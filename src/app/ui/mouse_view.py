@@ -1,5 +1,6 @@
 """
 Affichage visuel de la souris — boutons cliquables pour assignation.
+Chaque bouton peut avoir une séquence de commandes Revit.
 """
 from __future__ import annotations
 from typing import Callable
@@ -18,7 +19,7 @@ class MouseView(ctk.CTkFrame):
         super().__init__(parent, **kwargs)
         self._on_select = on_select
         self._selected: str | None = None
-        self._assignments: dict[str, str] = {}
+        self._assignments: dict[str, list[str]] = {}
         self._buttons: dict[str, ctk.CTkButton] = {}
         self._build()
 
@@ -52,26 +53,33 @@ class MouseView(ctk.CTkFrame):
         self._selected = button
         self._buttons[button].configure(fg_color=COLOR_SELECTED)
 
-    def assign(self, button: str, command_code: str) -> None:
-        self._assignments[button] = command_code
+    def set_commands(self, button: str, commands: list[str]) -> None:
+        if commands:
+            self._assignments[button] = commands
+        else:
+            self._assignments.pop(button, None)
         if button in self._buttons:
+            label = _mouse_label(button, commands)
             self._buttons[button].configure(
-                text=f"{button}\n{command_code}",
-                fg_color=COLOR_SELECTED if button == self._selected else COLOR_ASSIGNED,
+                text=label,
+                fg_color=COLOR_SELECTED if button == self._selected else (COLOR_ASSIGNED if commands else COLOR_DEFAULT),
             )
 
-    def unassign(self, button: str) -> None:
-        self._assignments.pop(button, None)
-        if button in self._buttons:
-            self._buttons[button].configure(
-                text=button,
-                fg_color=COLOR_SELECTED if button == self._selected else COLOR_DEFAULT,
-            )
+    def get_commands(self, button: str) -> list[str]:
+        return list(self._assignments.get(button, []))
 
-    def get_assignments(self) -> dict[str, str]:
-        return dict(self._assignments)
+    def get_assignments(self) -> dict[str, list[str]]:
+        return {k: list(v) for k, v in self._assignments.items()}
 
-    def load_assignments(self, assignments: dict[str, str]) -> None:
-        for button, code in assignments.items():
+    def load_assignments(self, assignments: dict[str, list[str]]) -> None:
+        for button, commands in assignments.items():
             if button in self._buttons:
-                self.assign(button, code)
+                self.set_commands(button, commands)
+
+
+def _mouse_label(button: str, commands: list[str]) -> str:
+    if not commands:
+        return button
+    if len(commands) == 1:
+        return f"{button}\n{commands[0]}"
+    return f"{button}\n{commands[0]}+{len(commands)-1}"
