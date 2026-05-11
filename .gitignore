@@ -12,3 +12,14 @@ desktop.ini
 .vscode/
 .cursor/
 *.suo
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# PyInstaller
+build/
+dist/
+*.spec
