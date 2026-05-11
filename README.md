@@ -4,7 +4,7 @@ Outil de raccourcis et macros pour Revit.
 
 ## Fonctionnalités
 
-- Interface visuelle clavier (AZERTY) + souris pour assigner des commandes Revit
+- Interface visuelle clavier (QWERTY) + souris pour assigner des commandes Revit
 - Génération automatique d'un script AHK qui tourne en arrière-plan
 - Statistiques d'utilisation mensuelles par utilisateur
 - Synchronisation vers partage réseau (avec file d'attente si hors réseau)
