@@ -77,7 +77,7 @@ def read_active_profile_index(script_path: Path) -> int:
 
 def _build_zone(profiles: list[dict], script_path: Path) -> str:
     count     = len(profiles)
-    tracker   = str(script_path.parent / "_rmt_profile.txt").replace("\\", "\\\\")
+    tracker   = str(script_path.parent / "_rmt_profile.txt")
     lines     = [ZONE_START]
 
     # Variables globales
@@ -152,11 +152,19 @@ def _create_base_script(script_path: Path) -> None:
 
 
 def _find_ahk() -> str | None:
-    for p in [
+    fixed = [
         r"C:\Program Files\AutoHotkey\AutoHotkey.exe",
         r"C:\Program Files\AutoHotkey\v1\AutoHotkey.exe",
         r"C:\Program Files (x86)\AutoHotkey\AutoHotkey.exe",
-    ]:
+    ]
+    for p in fixed:
         if Path(p).exists():
             return p
+    # AHK multi-version install : cherche v1.x.x.xx/AutoHotkeyU64.exe
+    base = Path(r"C:\Program Files\AutoHotkey")
+    for candidate in ["AutoHotkeyU64.exe", "AutoHotkeyU32.exe", "AutoHotkeyA32.exe"]:
+        for folder in sorted(base.glob("v1*"), reverse=True):
+            exe = folder / candidate
+            if exe.exists():
+                return str(exe)
     return None
