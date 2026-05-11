@@ -1,16 +1,16 @@
 """
-Affichage visuel du clavier — AZERTY/QWERTY.
+Affichage visuel du clavier — QWERTY.
 Chaque touche est un bouton cliquable pour assigner une commande Revit.
 """
 import customtkinter as ctk
 
 
-AZERTY_ROWS = [
+QWERTY_ROWS = [
     ["Esc", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12"],
-    ["²", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", ")", "=", "Backspace"],
-    ["Tab", "A", "Z", "E", "R", "T", "Y", "U", "I", "O", "P", "^", "$", "Enter"],
-    ["Caps", "Q", "S", "D", "F", "G", "H", "J", "K", "L", "M", "ù", "*"],
-    ["Shift", "<", "W", "X", "C", "V", "B", "N", ",", ";", ":", "!", "Shift"],
+    ["`", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", "Backspace"],
+    ["Tab", "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "[", "]", "\\"],
+    ["Caps", "A", "S", "D", "F", "G", "H", "J", "K", "L", ";", "'", "Enter"],
+    ["Shift", "Z", "X", "C", "V", "B", "N", "M", ",", ".", "/", "Shift"],
     ["Ctrl", "Win", "Alt", "Space", "AltGr", "Win", "Menu", "Ctrl"],
 ]
 
@@ -24,7 +24,7 @@ class KeyboardView(ctk.CTkFrame):
 
     def _build(self) -> None:
         ctk.CTkLabel(self, text="Clavier", font=("Arial", 12, "bold")).pack(anchor="w", padx=5, pady=(5, 2))
-        for row in AZERTY_ROWS:
+        for row in QWERTY_ROWS:
             row_frame = ctk.CTkFrame(self, fg_color="transparent")
             row_frame.pack(fill="x", pady=1, padx=5)
             for key in row:
