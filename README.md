@@ -1,6 +1,6 @@
 # Revit Macro Tool
 
-Outil de raccourcis et macros pour Revit — L2C Experts.
+Outil de raccourcis et macros pour Revit.
 
 ## Fonctionnalités
 
