@@ -80,14 +80,13 @@ def _build_zone(profiles: list[dict], script_path: Path) -> str:
     tracker   = str(script_path.parent / "_rmt_profile.txt")
     lines     = [ZONE_START]
 
-    # Variables globales
     lines += [
-        f"global _rmt_idx   := 1",
-        f"global _rmt_count := {count}",
+        f"_rmt_idx   := 1",
+        f"_rmt_count := {count}",
         "",
     ]
 
-    # Navigation PgUp / PgDn (actif seulement dans Revit)
+    # PgUp / PgDn — cycle de profil, Revit seulement
     lines += [
         "#IfWinActive Autodesk Revit",
         "PgUp::",
@@ -101,6 +100,7 @@ def _build_zone(profiles: list[dict], script_path: Path) -> str:
         f'    FileDelete, {tracker}',
         f'    FileAppend, %_rmt_idx%, {tracker}',
         "    return",
+        "#IfWinActive",
         "",
     ]
 
@@ -109,36 +109,52 @@ def _build_zone(profiles: list[dict], script_path: Path) -> str:
     for p in profiles:
         all_keys.update(p.get("assignments", {}).keys())
 
-    # Générer un hotkey par touche avec branchement par profil
-    for ui_key in sorted(all_keys):
-        ahk_key = AHK_KEY_MAP.get(ui_key, ui_key)
-        lines.append(f"{ahk_key}::")
-        for idx, profile in enumerate(profiles, start=1):
-            assignments = profile.get("assignments", {})
-            seq = assignments.get(ui_key, [])
-            if not seq:
-                continue
-            condition = "if" if idx == 1 else "else if"
-            lines.append(f"    {condition} (_rmt_idx == {idx})  ; {profile['name']}")
-            lines.append("    {")
-            for item in seq:
-                if item["type"] == "key":
-                    lines.append(f"        Send, {item['value']}")
-                    lines.append(f"        Sleep, 100")
-                elif item["type"] == "text":
-                    escaped = item["value"].replace('"', '""')
-                    lines.append(f'        oldClip := ClipboardAll')
-                    lines.append(f'        Clipboard := "{escaped}"')
-                    lines.append(f'        ClipWait, 1')
-                    lines.append(f'        Send, ^v')
-                    lines.append(f'        Sleep, 50')
-                    lines.append(f'        Clipboard := oldClip')
-                    lines.append(f'        Sleep, 100')
-            lines.append("    }")
-        lines.append("    return")
+    # Générer un hotkey par touche — boutons souris globaux, clavier Revit seulement
+    mouse_keys = {"Clic gauche", "Clic milieu", "Clic droit", "XButton1", "XButton2"}
+    kb_keys = sorted(k for k in all_keys if k not in mouse_keys)
+    mouse_assigned = sorted(k for k in all_keys if k in mouse_keys)
+
+    def _write_hotkeys(keys: list[str]) -> None:
+        for ui_key in keys:
+            ahk_key = AHK_KEY_MAP.get(ui_key, ui_key)
+            lines.append(f"{ahk_key}::")
+            first = True
+            for idx, profile in enumerate(profiles, start=1):
+                seq = profile.get("assignments", {}).get(ui_key, [])
+                if not seq:
+                    continue
+                condition = "if" if first else "else if"
+                first = False
+                lines.append(f"    {condition} (_rmt_idx == {idx})  ; {profile['name']}")
+                lines.append("    {")
+                for item in seq:
+                    if item["type"] == "key":
+                        lines.append(f"        Send, {item['value']}")
+                        lines.append(f"        Sleep, 100")
+                    elif item["type"] == "text":
+                        escaped = item["value"].replace('"', '""')
+                        lines.append(f'        oldClip := ClipboardAll')
+                        lines.append(f'        Clipboard := "{escaped}"')
+                        lines.append(f'        ClipWait, 1')
+                        lines.append(f'        Send, ^v')
+                        lines.append(f'        Sleep, 50')
+                        lines.append(f'        Clipboard := oldClip')
+                        lines.append(f'        Sleep, 100')
+                lines.append("    }")
+            lines.append("    return")
+            lines.append("")
+
+    # Boutons souris — globaux (pas restreint à Revit)
+    _write_hotkeys(mouse_assigned)
+
+    # Touches clavier — Revit seulement
+    if kb_keys:
+        lines.append("#IfWinActive Autodesk Revit")
+        _write_hotkeys(kb_keys)
+        lines.append("#IfWinActive")
         lines.append("")
 
-    lines += ["#IfWinActive", "", ZONE_END]
+    lines += [ZONE_END]
     return "\n".join(lines) + "\n"
 
 
