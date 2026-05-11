@@ -1,14 +1,14 @@
 """
 Affichage visuel de la souris — boutons cliquables pour assignation.
-Chaque bouton peut avoir une séquence de commandes Revit.
+Chaque bouton peut avoir une séquence de commandes Revit et/ou textes.
 """
 from __future__ import annotations
 from typing import Callable
 import customtkinter as ctk
 
+SequenceItem = dict  # {"type": "key"|"text", "value": str}
 
-MOUSE_BUTTONS = ["Clic gauche", "Clic milieu", "Clic droit", "XButton1", "XButton2"]
-
+MOUSE_BUTTONS  = ["Clic gauche", "Clic milieu", "Clic droit", "XButton1", "XButton2"]
 COLOR_DEFAULT  = "#2b2b2b"
 COLOR_SELECTED = "#1f6aa5"
 COLOR_ASSIGNED = "#2d6e3e"
@@ -19,7 +19,7 @@ class MouseView(ctk.CTkFrame):
         super().__init__(parent, **kwargs)
         self._on_select = on_select
         self._selected: str | None = None
-        self._assignments: dict[str, list[str]] = {}
+        self._assignments: dict[str, list[SequenceItem]] = {}
         self._buttons: dict[str, ctk.CTkButton] = {}
         self._build()
 
@@ -29,13 +29,8 @@ class MouseView(ctk.CTkFrame):
         row.pack(fill="x", padx=6, pady=(0, 6))
         for name in MOUSE_BUTTONS:
             btn = ctk.CTkButton(
-                row,
-                text=name,
-                width=110,
-                height=40,
-                font=("Arial", 10),
-                fg_color=COLOR_DEFAULT,
-                hover_color="#3a3a3a",
+                row, text=name, width=110, height=40, font=("Arial", 10),
+                fg_color=COLOR_DEFAULT, hover_color="#3a3a3a",
                 command=lambda b=name: self._on_click(b),
             )
             btn.pack(side="left", padx=3)
@@ -53,33 +48,33 @@ class MouseView(ctk.CTkFrame):
         self._selected = button
         self._buttons[button].configure(fg_color=COLOR_SELECTED)
 
-    def set_commands(self, button: str, commands: list[str]) -> None:
-        if commands:
-            self._assignments[button] = commands
+    def set_commands(self, button: str, sequence: list[SequenceItem]) -> None:
+        if sequence:
+            self._assignments[button] = sequence
         else:
             self._assignments.pop(button, None)
         if button in self._buttons:
-            label = _mouse_label(button, commands)
             self._buttons[button].configure(
-                text=label,
-                fg_color=COLOR_SELECTED if button == self._selected else (COLOR_ASSIGNED if commands else COLOR_DEFAULT),
+                text=_btn_label(button, sequence),
+                fg_color=COLOR_SELECTED if button == self._selected else (COLOR_ASSIGNED if sequence else COLOR_DEFAULT),
             )
 
-    def get_commands(self, button: str) -> list[str]:
+    def get_commands(self, button: str) -> list[SequenceItem]:
         return list(self._assignments.get(button, []))
 
-    def get_assignments(self) -> dict[str, list[str]]:
+    def get_assignments(self) -> dict[str, list[SequenceItem]]:
         return {k: list(v) for k, v in self._assignments.items()}
 
-    def load_assignments(self, assignments: dict[str, list[str]]) -> None:
-        for button, commands in assignments.items():
+    def load_assignments(self, assignments: dict[str, list[SequenceItem]]) -> None:
+        for button, seq in assignments.items():
             if button in self._buttons:
-                self.set_commands(button, commands)
+                self.set_commands(button, seq)
 
 
-def _mouse_label(button: str, commands: list[str]) -> str:
-    if not commands:
+def _btn_label(button: str, seq: list[SequenceItem]) -> str:
+    if not seq:
         return button
-    if len(commands) == 1:
-        return f"{button}\n{commands[0]}"
-    return f"{button}\n{commands[0]}+{len(commands)-1}"
+    first = seq[0]["value"] if seq[0]["type"] == "key" else "TXT"
+    if len(seq) == 1:
+        return f"{button}\n{first}"
+    return f"{button}\n{first}+{len(seq)-1}"
