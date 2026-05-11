@@ -26,21 +26,15 @@ AHK_KEY_MAP_INV = {v: k for k, v in AHK_KEY_MAP.items()}
 
 
 def write_profiles(script_path: Path, profiles: list[dict]) -> None:
-    """Génère le script AHK complet avec tous les profils et le cycle PgUp/PgDn."""
-    if not script_path.exists():
-        _create_base_script(script_path)
-
-    content   = script_path.read_text(encoding="utf-8")
-    zone_block = _build_zone(profiles, script_path)
-
-    start = content.find(ZONE_START)
-    end   = content.find(ZONE_END)
-    if start != -1 and end != -1:
-        new_content = content[:start] + zone_block + content[end + len(ZONE_END):]
-    else:
-        new_content = content.rstrip() + "\n\n" + zone_block
-
-    script_path.write_text(new_content, encoding="utf-8")
+    """Écrit le script AHK complet (header + zone) — remplace le fichier entier."""
+    script_path.parent.mkdir(parents=True, exist_ok=True)
+    header = (
+        "#Requires AutoHotkey v1.1\n"
+        "#SingleInstance Force\n"
+        "#NoEnv\n"
+        "SetWorkingDir %A_ScriptDir%\n\n"
+    )
+    script_path.write_text(header + _build_zone(profiles, script_path), encoding="utf-8")
     logger.success(f"Script AHK mis à jour : {len(profiles)} profil(s)")
 
 
