@@ -8,6 +8,7 @@ from pathlib import Path
 
 _CONFIG_PATH = Path(__file__).parent.parent.parent / "config.json"
 _LOCAL_DATA_DIR = Path(__file__).parent.parent.parent / "data_local"
+_DEFAULT_AHK_PATH = _LOCAL_DATA_DIR / "RevitMacros.ahk"
 
 
 def load() -> dict:
@@ -31,6 +32,17 @@ def get_or_create_user_id() -> str:
 
 def get_network_path() -> str:
     return load().get("network_path", "")
+
+
+def get_ahk_script_path() -> Path:
+    config = load()
+    return Path(config.get("ahk_script_path", str(_DEFAULT_AHK_PATH)))
+
+
+def set_ahk_script_path(path: Path) -> None:
+    config = load()
+    config["ahk_script_path"] = str(path)
+    save(config)
 
 
 def get_local_data_dir() -> Path:

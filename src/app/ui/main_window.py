@@ -9,8 +9,9 @@ from app.ui.keyboard_view import KeyboardView
 from app.ui.mouse_view import MouseView
 from app.ui.command_panel import CommandPanel
 from app.ui.log_window import LogWindow
-from app.core import ahk_generator
+from app.core import ahk_manager
 from app.core import logger
+from app.config import get_ahk_script_path, set_ahk_script_path
 
 
 ASSIGNMENTS_PATH = Path(__file__).parent.parent.parent.parent / "data_local" / "assignments.json"
@@ -20,16 +21,33 @@ class MainWindow(ctk.CTk):
     def __init__(self) -> None:
         super().__init__()
         self.title("Revit Macro Tool")
-        self.geometry("1200x680")
+        self.geometry("1200x720")
         self.resizable(False, False)
         self._active_key: str | None = None
         self._active_view = None
         self._log_window: LogWindow | None = None
         self._build_ui()
         logger.info("Application démarrée")
-        self._load_assignments()
+        self._load_from_script()
 
     def _build_ui(self) -> None:
+        # Barre du haut — chemin du script AHK
+        top = ctk.CTkFrame(self, height=44)
+        top.pack(fill="x", padx=10, pady=(10, 0))
+        top.pack_propagate(False)
+
+        ctk.CTkLabel(top, text="Script AHK :", font=("Arial", 11)).pack(side="left", padx=(8, 4))
+        self._script_path_var = ctk.StringVar(value=str(get_ahk_script_path()))
+        ctk.CTkEntry(top, textvariable=self._script_path_var, width=560, font=("Arial", 10)).pack(side="left")
+        ctk.CTkButton(top, text="Parcourir", width=80, height=28,
+                      command=self._browse_script).pack(side="left", padx=6)
+        ctk.CTkButton(top, text="▶ Lancer AHK", width=110, height=28,
+                      fg_color="#2d6e3e", hover_color="#1f5530",
+                      command=self._launch_ahk).pack(side="left", padx=2)
+        ctk.CTkButton(top, text="📋 Logs", width=80, height=28,
+                      fg_color="#333", hover_color="#444",
+                      command=self._open_logs).pack(side="right", padx=8)
+
         # Panneau gauche — clavier + souris
         left = ctk.CTkFrame(self)
         left.pack(side="left", fill="both", expand=True, padx=10, pady=10)
@@ -39,31 +57,6 @@ class MainWindow(ctk.CTk):
 
         self._mouse = MouseView(left, on_select=self._on_key_selected)
         self._mouse.pack(fill="x", pady=(8, 0))
-
-        # Boutons du bas
-        btn_row = ctk.CTkFrame(left, fg_color="transparent")
-        btn_row.pack(fill="x", pady=10)
-
-        ctk.CTkButton(
-            btn_row,
-            text="Générer script AHK",
-            height=40,
-            font=("Arial", 13, "bold"),
-            fg_color="#1f6aa5",
-            hover_color="#1a5a8a",
-            command=self._generate_ahk,
-        ).pack(side="left", fill="x", expand=True, padx=(0, 4))
-
-        ctk.CTkButton(
-            btn_row,
-            text="📋 Logs",
-            height=40,
-            width=90,
-            font=("Arial", 12),
-            fg_color="#333",
-            hover_color="#444",
-            command=self._open_logs,
-        ).pack(side="right")
 
         # Panneau droit — commandes
         right = ctk.CTkFrame(self, width=320)
@@ -88,61 +81,60 @@ class MainWindow(ctk.CTk):
         else:
             self._active_view.unassign(self._active_key)
             logger.info(f"Assignation retirée : {self._active_key}")
-        self._save_assignments()
+        self._save_to_script()
 
     def _get_all_assignments(self) -> dict[str, str]:
         return {**self._keyboard.get_assignments(), **self._mouse.get_assignments()}
 
-    def _save_assignments(self) -> None:
-        try:
-            ASSIGNMENTS_PATH.parent.mkdir(exist_ok=True)
-            ASSIGNMENTS_PATH.write_text(
-                json.dumps(self._get_all_assignments(), indent=2, ensure_ascii=False),
-                encoding="utf-8",
-            )
-            logger.info(f"Assignations sauvegardées ({len(self._get_all_assignments())} entrées)")
-        except Exception as e:
-            logger.error("Échec sauvegarde des assignations", e)
-
-    def _load_assignments(self) -> None:
-        if not ASSIGNMENTS_PATH.exists():
-            logger.info("Aucun fichier d'assignations existant — démarrage à zéro")
+    def _save_to_script(self) -> None:
+        script_path = self._get_script_path()
+        if not script_path:
             return
         try:
-            with open(ASSIGNMENTS_PATH, encoding="utf-8") as f:
-                data: dict = json.load(f)
-            self._keyboard.load_assignments(data)
-            self._mouse.load_assignments(data)
-            logger.success(f"Assignations chargées : {len(data)} entrées")
+            ahk_manager.write_assignments(script_path, self._get_all_assignments())
+            ahk_manager.reload_script(script_path)
         except Exception as e:
-            logger.error("Échec chargement des assignations", e)
+            logger.error("Échec mise à jour du script AHK", e)
 
-    def _generate_ahk(self) -> None:
-        assignments = self._get_all_assignments()
-        if not assignments:
-            logger.warning("Génération AHK annulée — aucune assignation")
-            self._show_message("Aucune assignation à générer.", error=True)
+    def _load_from_script(self) -> None:
+        script_path = self._get_script_path()
+        if not script_path or not script_path.exists():
+            logger.info("Aucun script AHK existant — démarrage à zéro")
             return
         try:
-            output = ASSIGNMENTS_PATH.parent / "RevitMacros.ahk"
-            ahk_generator.generate(assignments, output)
-            logger.success(f"Script AHK généré : {output}")
-            self._show_message(f"Script généré :\n{output}")
+            assignments = ahk_manager.read_assignments(script_path)
+            self._keyboard.load_assignments(assignments)
+            self._mouse.load_assignments(assignments)
         except Exception as e:
-            logger.error("Échec génération du script AHK", e)
-            self._show_message("Erreur lors de la génération du script.", error=True)
+            logger.error("Échec lecture du script AHK", e)
+
+    def _get_script_path(self) -> Path | None:
+        path_str = self._script_path_var.get().strip()
+        if not path_str:
+            logger.warning("Aucun chemin de script AHK configuré")
+            return None
+        path = Path(path_str)
+        set_ahk_script_path(path)
+        return path
+
+    def _browse_script(self) -> None:
+        from tkinter import filedialog
+        path = filedialog.askopenfilename(
+            title="Sélectionner le script AHK",
+            filetypes=[("AutoHotkey", "*.ahk"), ("Tous les fichiers", "*.*")],
+        )
+        if path:
+            self._script_path_var.set(path)
+            logger.info(f"Script sélectionné : {path}")
+            self._load_from_script()
+
+    def _launch_ahk(self) -> None:
+        script_path = self._get_script_path()
+        if script_path:
+            ahk_manager.launch_script(script_path)
 
     def _open_logs(self) -> None:
         if self._log_window is None or not self._log_window.winfo_exists():
             self._log_window = LogWindow(self)
         else:
             self._log_window.focus()
-
-    def _show_message(self, text: str, error: bool = False) -> None:
-        dialog = ctk.CTkToplevel(self)
-        dialog.title("Revit Macro Tool")
-        dialog.geometry("420x160")
-        dialog.grab_set()
-        color = "#8b3b3b" if error else "#2d6e3e"
-        ctk.CTkLabel(dialog, text=text, wraplength=380, font=("Arial", 12)).pack(expand=True, pady=20)
-        ctk.CTkButton(dialog, text="OK", fg_color=color, command=dialog.destroy).pack(pady=(0, 15))
