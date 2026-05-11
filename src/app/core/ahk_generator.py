@@ -3,6 +3,8 @@ Génère le script AHK à partir de la configuration d'assignation clavier/souri
 """
 from pathlib import Path
 
+from app.core import logger
+
 
 AHK_HEADER = """\
 #Requires AutoHotkey v1.1
@@ -36,7 +38,7 @@ AHK_KEY_MAP = {
     "Win":          "LWin",
     "Menu":         "AppsKey",
     "Space":        "Space",
-    # Touches dont le caractère AHK doit être échappé
+    # Caractères à échapper en AHK
     "`":            "``",
 }
 
@@ -46,7 +48,9 @@ def generate(assignments: dict[str, str], output_path: Path) -> None:
     for key, command in assignments.items():
         ahk_key = _to_ahk_key(key)
         lines.append(f"{ahk_key}::\n    Send, {command}\n    Return\n")
+        logger.info(f"  AHK : {ahk_key} → {command}")
     output_path.write_text("\n".join(lines), encoding="utf-8")
+    logger.success(f"Script AHK écrit : {output_path} ({len(assignments)} règles)")
 
 
 def _to_ahk_key(key: str) -> str:

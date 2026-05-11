@@ -5,6 +5,8 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from app.core import logger
+
 
 @dataclass
 class RevitCommand:
@@ -18,8 +20,17 @@ class RevitCommand:
 
 def load() -> list[RevitCommand]:
     data_path = Path(__file__).parent.parent.parent.parent / "data" / "revit_commands.json"
-    with open(data_path, encoding="utf-8") as f:
-        return [RevitCommand(**item) for item in json.load(f)]
+    try:
+        with open(data_path, encoding="utf-8") as f:
+            commands = [RevitCommand(**item) for item in json.load(f)]
+        logger.success(f"Commandes Revit chargées : {len(commands)} entrées")
+        return commands
+    except FileNotFoundError:
+        logger.error(f"Fichier introuvable : {data_path}")
+        return []
+    except Exception as e:
+        logger.error("Erreur chargement commandes Revit", e)
+        return []
 
 
 def search(commands: list[RevitCommand], query: str) -> list[RevitCommand]:
