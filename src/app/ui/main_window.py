@@ -74,9 +74,6 @@ class MainWindow(ctk.CTk):
         ctk.CTkButton(prof_bar, text="🗑 Supprimer", width=100, height=28,
                       fg_color="#6e2d2d", hover_color="#552222",
                       command=self._delete_profile).pack(side="left", padx=2)
-        ctk.CTkButton(prof_bar, text="📥 Importer v1", width=110, height=28,
-                      fg_color="#5a4a00", hover_color="#7a6500",
-                      command=self._import_v1).pack(side="left", padx=12)
 
         # Panneau gauche — clavier + souris
         left = ctk.CTkFrame(self)
@@ -160,25 +157,6 @@ class MainWindow(ctk.CTk):
         self._refresh_profile_selector()
         self._save_and_reload()
         logger.success(f"Profil renommé : {name.strip()}")
-
-    def _import_v1(self) -> None:
-        from tkinter import filedialog
-        path = filedialog.askopenfilename(
-            title="Sélectionner MacroProfils.ini (v1)",
-            filetypes=[("Fichier INI", "*.ini"), ("Tous les fichiers", "*.*")],
-        )
-        if not path:
-            return
-        imported = profile_manager.import_from_ini(Path(path))
-        if not imported:
-            logger.warning("Aucun profil trouvé dans ce fichier INI")
-            return
-        self._profiles = imported
-        self._active_profile_idx = 0
-        self._refresh_profile_selector()
-        self._load_active_profile()
-        self._save_and_reload()
-        logger.success(f"{len(imported)} profil(s) importé(s) depuis MacroProfils v1")
 
     def _delete_profile(self) -> None:
         if len(self._profiles) <= 1:
